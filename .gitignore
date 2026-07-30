@@ -1,0 +1,18 @@
+# Virtual environment
+env/
+.venv/
+# Fine-tuned model directory &heavy weights
+my_finetuned_vit/
+*.bin
+*.safetensors
+*.pth
+*.pt
+# Data & cached outputs
+dataset/
+tested_images/
+.gradio/
+# Python cache & IDE files
+__pycache __/
+*.pyc
+.vscode/
+.idea/

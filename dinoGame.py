@@ -9,7 +9,7 @@ from transformers import ViTForImageClassification, ViTImageProcessor
 # ==========================================
 # 1. LOAD FINE-TUNED VISION TRANSFORMER
 # ==========================================
-model_path = "./my_finetuned_vit"
+model_path = "ademmatri/vit-hand-gesture-dino"
 print("Loading ViT model onto device...")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,26 +17,39 @@ model = ViTForImageClassification.from_pretrained(model_path).to(device)
 processor = ViTImageProcessor.from_pretrained(model_path)
 model.eval()
 
-id2label = model.config.id2label if hasattr(model.config, 'id2label') else {}
+# Explicit mapping to replace generic Hugging Face labels (label_3, label_4, etc.)
+# Swap these names if index 3 is closed and index 4 is open for your dataset
+custom_label_map = {
+    0: "fist_closed",
+    1: "fist_opened",
+    2: "fist_closed",
+    3: "fist_opened",  # Adjusts label_3 to clean text
+    4: "fist_closed"   # Adjusts label_4 to clean text
+}
 
 # Shared variables between threads
-latest_prediction = "Initializing..."
+latest_prediction = "initializing..."
 lock = threading.Lock()
 running = True
 
 # ==========================================
-# 2. BACKGROUND THREAD FOR VIT INFERENCE
+# 2. BACKGROUND THREAD FOR VIT & CAMERA FEED
 # ==========================================
 def vit_inference_thread():
     global latest_prediction, running
     
     cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+    if not cap.isOpened():
+        print("Error: Could not access webcam.")
+        running = False
+        return
 
     while running:
         ret, frame = cap.read()
-        if not ret:
+        if not ret or frame is None:
             continue
 
         # Prepare frame for ViT model
@@ -48,13 +61,30 @@ def vit_inference_thread():
             outputs = model(**inputs)
             predicted_class_id = outputs.logits.argmax(-1).item()
 
-        raw_label = id2label.get(predicted_class_id, str(predicted_class_id))
+        # Map class index to clean text string
+        raw_label = custom_label_map.get(
+            predicted_class_id, 
+            model.config.id2label.get(predicted_class_id, f"gesture_{predicted_class_id}")
+        )
         
         # Safely update prediction string shared with Pygame
         with lock:
             latest_prediction = str(raw_label).lower()
 
+        # Draw real-time prediction overlay on OpenCV camera window
+        display_text = f"Guess: {raw_label}"
+        color = (0, 255, 0) if "open" in raw_label.lower() else (0, 0, 255)
+        cv2.putText(frame, display_text, (20, 50), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2, cv2.LINE_AA)
+        
+        # Render live OpenCV webcam window
+        cv2.imshow("Real-Time Vision Classifier", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            running = False
+            break
+
     cap.release()
+    cv2.destroyAllWindows()
 
 # Start background thread
 ai_thread = threading.Thread(target=vit_inference_thread, daemon=True)
@@ -125,7 +155,7 @@ game_over = False
 # 4. MAIN GAME LOOP (SMOOTH 60 FPS)
 # ==========================================
 while running:
-    clock.tick(60) # High game frame rate
+    clock.tick(60)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -140,9 +170,8 @@ while running:
     with lock:
         current_pred = latest_prediction
 
-    # TRIGGER JUMP: Check label or class string
-    # (Adjust "open" if your dataset label is named differently, e.g., "1" or "hand_open")
-    if "fist_opened" in current_pred or "label_3" in current_pred:
+    # TRIGGER JUMP: Check for open hand condition
+    if "open" in current_pred or "opened" in current_pred:
         if not game_over:
             dino.jump()
 
@@ -170,8 +199,8 @@ while running:
 
     screen.blit(font.render(f"Score: {score}", True, BLACK), (WIDTH - 160, 20))
     
-    # Live HUD Prediction Display
-    status_color = GREEN if ("open" in current_pred or "1" in current_pred) else RED
+    # Live HUD Prediction Display in Pygame
+    status_color = GREEN if ("open" in current_pred or "opened" in current_pred) else RED
     label_txt = font.render(f"ViT Prediction: {current_pred}", True, status_color)
     screen.blit(label_txt, (20, 20))
 

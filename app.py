@@ -4,7 +4,7 @@ from PIL import Image
 from transformers import ViTForImageClassification, ViTImageProcessor
 
 # Load model & processor
-model_path = "./my_finetuned_vit"
+model_path = "ademmatri/vit-hand-gesture-dino"
 model = ViTForImageClassification.from_pretrained(model_path)
 processor = ViTImageProcessor.from_pretrained(model_path)
 

@@ -12,17 +12,17 @@ A real-time Vision Transformer (ViT) application built with PyTorch, Transformer
 ## Quick Start
 
 1. Clone the repository:
-   ash
+   ash
    git clone https://github.com/ademmatri/vision-ai-dino-runner.git
    cd vision-ai-dino-runner
    
 
-2. **Install dependencies:**
+3. **Install dependencies:**
    ash
    pip install -r requirements.txt
    
 
-3. **Run the Game:**
+4. **Run the Game:**
    ash
    python dinoGame.py
    

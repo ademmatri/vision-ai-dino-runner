@@ -7,7 +7,7 @@ A real-time Vision Transformer (ViT) application built with PyTorch, Transformer
 - \	rain.py\ - Script to fine-tune the Vision Transformer model on custom dataset.
 - \webcam_predict.py\ - Standalone real-time webcam inference pipeline.
 - \predict.py\ - Single image evaluation script.
-- \pp.py\ - Gradio web interface for model interactive demo.
+- \pp.py\ - Gradio web interface for model interactive demo.
 
 ## Quick Start
 
